@@ -1,61 +1,52 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { useSession } from './SessionContext';
+import { getOrdersByTableAndSession } from '../services/orderService';
 
 const CartContext = createContext();
 
-export const useCart = () => useContext(CartContext);
-
 export const CartProvider = ({ children }) => {
+  const { tableNumber, sessionId, isSessionActive } = useSession();
   const [items, setItems] = useState([]);
   const [specialInstructions, setSpecialInstructions] = useState('');
-  const { sessionId, tableNumber } = useSession();
+  const [previousOrders, setPreviousOrders] = useState([]);
+  const [loading, setLoading] = useState(false);
 
-  // Load cart from localStorage when session changes
+  // Load previous orders when session is active
   useEffect(() => {
-    if (sessionId) {
-      const savedCart = localStorage.getItem(`cart_${sessionId}`);
-      if (savedCart) {
+    const loadPreviousOrders = async () => {
+      if (isSessionActive && tableNumber && sessionId) {
+        setLoading(true);
         try {
-          const { items: savedItems, instructions } = JSON.parse(savedCart);
-          setItems(savedItems || []);
-          setSpecialInstructions(instructions || '');
+          const orders = await getOrdersByTableAndSession(tableNumber, sessionId);
+          setPreviousOrders(orders);
         } catch (error) {
-          console.error('Error parsing saved cart:', error);
+          console.error('Error loading previous orders:', error);
+        } finally {
+          setLoading(false);
         }
       }
-    }
-  }, [sessionId]);
+    };
 
-  // Save cart to localStorage whenever it changes
-  useEffect(() => {
-    if (sessionId) {
-      localStorage.setItem(`cart_${sessionId}`, JSON.stringify({
-        items,
-        instructions: specialInstructions
-      }));
-    }
-  }, [items, specialInstructions, sessionId]);
+    loadPreviousOrders();
+  }, [isSessionActive, tableNumber, sessionId]);
 
-  const addItem = (item, quantity = 1, itemInstructions = '') => {
+  const addItem = (item, quantity = 1, instructions = '') => {
     setItems(prevItems => {
+      // Check if item already exists in cart
       const existingItemIndex = prevItems.findIndex(i => i.id === item.id);
       
       if (existingItemIndex >= 0) {
-        // Item exists, update quantity
+        // Update quantity of existing item
         const updatedItems = [...prevItems];
         updatedItems[existingItemIndex] = {
           ...updatedItems[existingItemIndex],
           quantity: updatedItems[existingItemIndex].quantity + quantity,
-          instructions: itemInstructions || updatedItems[existingItemIndex].instructions
+          instructions: instructions || updatedItems[existingItemIndex].instructions
         };
         return updatedItems;
       } else {
-        // Item doesn't exist, add new item
-        return [...prevItems, { 
-          ...item, 
-          quantity, 
-          instructions: itemInstructions 
-        }];
+        // Add new item
+        return [...prevItems, { ...item, quantity, instructions }];
       }
     });
   };
@@ -94,25 +85,31 @@ export const CartProvider = ({ children }) => {
     return items.reduce((total, item) => total + (item.price * item.quantity), 0);
   };
 
-  const getItemCount = () => {
-    return items.reduce((count, item) => count + item.quantity, 0);
+  const value = {
+    items,
+    specialInstructions,
+    setSpecialInstructions,
+    previousOrders,
+    loading,
+    addItem,
+    removeItem,
+    updateItemQuantity,
+    updateItemInstructions,
+    clearCart,
+    getTotal,
   };
 
   return (
-    <CartContext.Provider value={{
-      items,
-      specialInstructions,
-      setSpecialInstructions,
-      addItem,
-      removeItem,
-      updateItemQuantity,
-      updateItemInstructions,
-      clearCart,
-      getTotal,
-      getItemCount,
-      tableNumber
-    }}>
+    <CartContext.Provider value={value}>
       {children}
     </CartContext.Provider>
   );
+};
+
+export const useCart = () => {
+  const context = useContext(CartContext);
+  if (context === undefined) {
+    throw new Error('useCart must be used within a CartProvider');
+  }
+  return context;
 };

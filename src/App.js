@@ -1,39 +1,30 @@
-import React, { Suspense } from 'react';
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
-import { Toaster } from 'react-hot-toast';
+import React from 'react';
+import { Routes, Route } from 'react-router-dom';
 import { SessionProvider } from './context/SessionContext';
 import { CartProvider } from './context/CartContext';
-import Header from './components/layout/Header';
-import Footer from './components/layout/Footer';
 import HomePage from './pages/HomePage';
-import CartPage from './pages/CartPage';
-import OrdersPage from './pages/OrdersPage';
-import NotFoundPage from './pages/NotFoundPage';
-import './i18n'; // Import i18n configuration
+import MenuPage from './pages/MenuPage';
+// Uncomment and import admin pages
+import AdminDashboard from './pages/admin/index';
+import AdminLogin from './pages/admin/login';
+import TablesManagement from './pages/admin/tables';
+import OrdersManagement from './pages/admin/orders';
 
 function App() {
   return (
-    <Suspense fallback={<div className="flex justify-center items-center h-screen">Loading...</div>}>
-      <SessionProvider>
-        <CartProvider>
-          <Router>
-            <div className="flex flex-col min-h-screen">
-              <Header />
-              <main className="flex-grow">
-                <Routes>
-                  <Route path="/" element={<HomePage />} />
-                  <Route path="/cart" element={<CartPage />} />
-                  <Route path="/orders" element={<OrdersPage />} />
-                  <Route path="*" element={<NotFoundPage />} />
-                </Routes>
-              </main>
-              <Footer />
-            </div>
-            <Toaster position="top-center" />
-          </Router>
-        </CartProvider>
-      </SessionProvider>
-    </Suspense>
+    <SessionProvider>
+      <CartProvider>
+        <Routes>
+          <Route path="/" element={<HomePage />} />
+          <Route path="/menu" element={<MenuPage />} />
+          {/* Uncomment admin routes */}
+          <Route path="/admin" element={<AdminDashboard />} />
+          <Route path="/admin/login" element={<AdminLogin />} />
+          <Route path="/admin/tables" element={<TablesManagement />} />
+          <Route path="/admin/orders" element={<OrdersManagement />} />
+        </Routes>
+      </CartProvider>
+    </SessionProvider>
   );
 }
 
