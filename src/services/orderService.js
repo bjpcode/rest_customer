@@ -87,22 +87,6 @@ export const getOrdersByTableAndSession = async (tableNumber, sessionId) => {
   return data;
 };
 
-// Add the missing function
-export const getOrdersBySession = async (sessionId) => {
-  const { data, error } = await supabase
-    .from('orders_rest')
-    .select('*')
-    .eq('session_id', sessionId)
-    .order('created_at', { ascending: false });
-  
-  if (error) {
-    console.error('Error fetching orders for session:', error);
-    throw error;
-  }
-  
-  return data;
-};
-
 export const createOrder = async (orderData) => {
   const { data, error } = await supabase
     .from('orders_rest')
@@ -116,4 +100,19 @@ export const createOrder = async (orderData) => {
   }
   
   return data;
+};
+
+export const getSessionTotal = async (sessionId) => {
+  const { data, error } = await supabase
+    .from('orders_rest')
+    .select('total_amount')
+    .eq('session_id', sessionId);
+  
+  if (error) {
+    console.error('Error fetching session total:', error);
+    throw error;
+  }
+  
+  const total = data.reduce((sum, order) => sum + order.total_amount, 0);
+  return total;
 };

@@ -58,34 +58,45 @@ export const openTableSession = async (tableNumber) => {
     throw error;
   }
   
+  // Update table status to Occupied
+  const { error: tableError } = await supabase
+    .from('restaurant_tables')
+    .update({ status: 'Occupied' })
+    .eq('table_number', tableNumber);
+  
+  if (tableError) {
+    console.error('Error updating table status:', tableError);
+    throw tableError;
+  }
+  
   return data;
 };
 
+// Update the closeTableSession function to handle conflicts better
 export const closeTableSession = async (tableNumber) => {
-  // Find active session for this table
-  const session = await getTableSession(tableNumber);
-  
-  if (!session) {
-    throw new Error(`No active session found for table ${tableNumber}`);
-  }
-  
-  // Update session to inactive
-  const { data, error } = await supabase
-    .from('table_sessions')
-    .update({ 
-      is_active: false,
-      ended_at: new Date().toISOString()
-    })
-    .eq('id', session.id)
-    .select()
-    .single();
-  
-  if (error) {
-    console.error('Error closing table session:', error);
+  try {
+    const { data, error } = await supabase
+      .from('table_sessions')
+      .update({ is_active: false })
+      .eq('table_number', tableNumber)
+      .eq('is_active', true);
+    
+    if (error) {
+      console.error('Error closing table session:', error);
+      
+      // Check for specific error types
+      if (error.code === '23505' || error.status === 409) {
+        throw new Error('This session may have already been closed or modified by another user.');
+      }
+      
+      throw error;
+    }
+    
+    return data;
+  } catch (error) {
+    console.error('Exception in closeTableSession:', error);
     throw error;
   }
-  
-  return data;
 };
 
 export const getSessionQRCode = (tableNumber, sessionId, baseUrl) => {
@@ -126,9 +137,59 @@ export const startSession = async (tableNumber) => {
       throw error;
     }
     
+    // Update table status to Occupied
+    const { error: tableError } = await supabase
+      .from('restaurant_tables')
+      .update({ status: 'Occupied' })
+      .eq('table_number', tableNumber);
+    
+    if (tableError) {
+      console.error('Error updating table status:', tableError);
+      throw tableError;
+    }
+    
     return data;
   } catch (error) {
     console.error('Error in startSession:', error);
+    throw error;
+  }
+};
+
+// Add function to end session
+export const endSession = async (tableNumber) => {
+  try {
+    // First get the active session
+    const { data: session } = await supabase
+      .from('table_sessions')
+      .select('*')
+      .eq('table_number', tableNumber)
+      .eq('is_active', true)
+      .single();
+    
+    if (!session) throw new Error('No active session found');
+    
+    // Update session to inactive
+    const { error: sessionError } = await supabase
+      .from('table_sessions')
+      .update({ 
+        is_active: false,
+        ended_at: new Date().toISOString()
+      })
+      .eq('id', session.id);
+    
+    if (sessionError) throw sessionError;
+    
+    // Update table status
+    const { error: tableError } = await supabase
+      .from('restaurant_tables')
+      .update({ status: 'Available' })
+      .eq('table_number', tableNumber);
+    
+    if (tableError) throw tableError;
+    
+    return { success: true };
+  } catch (error) {
+    console.error('Error ending session:', error);
     throw error;
   }
 };

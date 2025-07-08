@@ -15,35 +15,23 @@ export const SessionProvider = ({ children }) => {
       try {
         setLoading(true);
         
-        // Get table number and session ID from URL query params
+        // Get table number from URL query params
         const searchParams = new URLSearchParams(window.location.search);
         const table = searchParams.get('table');
-        const session = searchParams.get('session');
         
         if (table) {
           const tableNum = parseInt(table);
           setTableNumber(tableNum);
           
-          if (session) {
-            // If session ID is provided, use it
-            setSessionId(session);
+          // Check if there's an active session for this table
+          const activeSession = await getTableSession(tableNum);
+          
+          if (activeSession) {
+            setSessionId(activeSession.id);
             setIsSessionActive(true);
           } else {
-            // Otherwise, check if there's an active session for this table
-            const activeSession = await getTableSession(tableNum);
-            
-            if (activeSession) {
-              setSessionId(activeSession.id);
-              setIsSessionActive(true);
-              
-              // Update URL with session ID without using router
-              const newUrl = new URL(window.location.href);
-              newUrl.searchParams.set('session', activeSession.id);
-              window.history.replaceState({}, '', newUrl);
-            } else {
-              setIsSessionActive(false);
-              setError('No active session for this table');
-            }
+            setIsSessionActive(false);
+            setError('Table is not open. Please ask staff to open your table.');
           }
         }
       } catch (err) {

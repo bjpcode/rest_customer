@@ -14,24 +14,26 @@ i18n
   .init({
     fallbackLng: 'en',
     debug: process.env.NODE_ENV === 'development',
-    supportedLngs: ['en', 'it', 'zh'],
     
     interpolation: {
       escapeValue: false, // not needed for react as it escapes by default
     },
     
-    // Backend configuration
+    // Fix for JSON parsing error
     backend: {
       loadPath: '/locales/{{lng}}/{{ns}}.json',
+      parse: (data) => {
+        try {
+          return JSON.parse(data);
+        } catch (e) {
+          console.error('Failed to parse translation JSON:', e);
+          return {}; // Return empty object to prevent app from crashing
+        }
+      }
     },
     
-    // Default namespace
-    defaultNS: 'common',
-    
-    // Language detection options
-    detection: {
-      order: ['localStorage', 'navigator'],
-      caches: ['localStorage'],
+    react: {
+      useSuspense: false, // This prevents issues during SSR or when translations aren't loaded yet
     }
   });
 
