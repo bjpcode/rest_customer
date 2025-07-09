@@ -105,3 +105,52 @@ export const getSessionTotal = async (sessionId) => {
   const total = data.reduce((sum, order) => sum + order.total_amount, 0);
   return total;
 };
+
+// Add this function to your existing orderService.js
+export const deleteOrderItem = async (orderId) => {
+  const { error } = await supabase
+    .from('orders_rest')
+    .delete()
+    .eq('id', orderId);
+  
+  if (error) {
+    console.error('Error deleting order item:', error);
+    throw error;
+  }
+  
+  return { success: true };
+};
+
+// Add these functions to your existing orderService.js
+export const updateOrderItems = async (orderId, updatedItems, newTotalAmount) => {
+  const { data, error } = await supabase
+    .from('orders_rest')
+    .update({ 
+      order_items: updatedItems,
+      total_amount: newTotalAmount 
+    })
+    .eq('id', orderId)
+    .select()
+    .single();
+  
+  if (error) {
+    console.error('Error updating order items:', error);
+    throw error;
+  }
+  
+  return data;
+};
+
+export const deleteOrderIfEmpty = async (orderId) => {
+  const { error } = await supabase
+    .from('orders_rest')
+    .delete()
+    .eq('id', orderId);
+  
+  if (error) {
+    console.error('Error deleting empty order:', error);
+    throw error;
+  }
+  
+  return { success: true };
+};

@@ -159,25 +159,36 @@ export const startSession = async (tableNumber) => {
 export const endSession = async (tableNumber) => {
   try {
     // First get the active session
-    const { data: session } = await supabase
+    const { data: session, error: fetchError } = await supabase
       .from('table_sessions')
       .select('*')
       .eq('table_number', tableNumber)
       .eq('is_active', true)
       .single();
     
-    if (!session) throw new Error('No active session found');
+    if (fetchError) {
+      console.error('Error fetching active session:', fetchError);
+      throw fetchError;
+    }
     
-    // Update session to inactive
-    const { error: sessionError } = await supabase
+    if (!session) {
+      throw new Error('No active session found for this table');
+    }
+    
+    // Update session to inactive - use the specific session ID
+    const { data, error: sessionError } = await supabase
       .from('table_sessions')
       .update({ 
         is_active: false,
         ended_at: new Date().toISOString()
       })
-      .eq('id', session.id);
+      .eq('id', session.id)
+      .select();
     
-    if (sessionError) throw sessionError;
+    if (sessionError) {
+      console.error('Error updating session:', sessionError);
+      throw sessionError;
+    }
     
     // Update table status
     const { error: tableError } = await supabase
@@ -185,9 +196,12 @@ export const endSession = async (tableNumber) => {
       .update({ status: 'Available' })
       .eq('table_number', tableNumber);
     
-    if (tableError) throw tableError;
+    if (tableError) {
+      console.error('Error updating table status:', tableError);
+      throw tableError;
+    }
     
-    return { success: true };
+    return { success: true, session: data };
   } catch (error) {
     console.error('Error ending session:', error);
     throw error;
