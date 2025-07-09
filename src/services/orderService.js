@@ -3,31 +3,20 @@ import { supabase } from './supabase';
 export const getOrders = async (filters = {}) => {
   let query = supabase
     .from('orders_rest')
-    .select(`
-      *,
-      table_sessions(*)
-    `)
+    .select('*') // Simplified select statement - no table joins
     .order('created_at', { ascending: false });
   
   // Apply filters
-  if (filters.status && filters.status !== 'all') {
-    query = query.eq('status', filters.status);
-  }
-  
-  if (filters.tableNumber && filters.tableNumber !== 'all') {
-    query = query.eq('table_number', parseInt(filters.tableNumber));
-  }
-  
   if (filters.sessionId) {
     query = query.eq('session_id', filters.sessionId);
   }
   
-  if (filters.startDate) {
-    query = query.gte('created_at', filters.startDate.toISOString());
+  if (filters.tableNumber) {
+    query = query.eq('table_number', filters.tableNumber);
   }
   
-  if (filters.endDate) {
-    query = query.lte('created_at', filters.endDate.toISOString());
+  if (filters.status && filters.status !== 'all') {
+    query = query.eq('status', filters.status);
   }
   
   const { data, error } = await query;
