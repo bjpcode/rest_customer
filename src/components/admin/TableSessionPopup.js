@@ -43,6 +43,7 @@ const TableSessionPopup = ({ isOpen, onClose, table, onSessionStart, onSessionEn
   const fetchSessionOrders = async (sessionId) => {
     try {
       const ordersData = await getOrdersByTableAndSession(table.table_number, sessionId);
+      console.log('Fetched orders:', ordersData);
       setOrders(ordersData);
       
       // Calculate total
@@ -82,16 +83,34 @@ const TableSessionPopup = ({ isOpen, onClose, table, onSessionStart, onSessionEn
   
   const handleDeleteItem = async (orderId, itemIndex) => {
     const order = orders.find(o => o.id === orderId);
-    if (!order || !order.items || !Array.isArray(order.items)) return;
+    if (!order) return;
     
-    const itemToDelete = order.items[itemIndex];
-    if (!itemToDelete || !window.confirm(`Remove ${itemToDelete.name} from the order?`)) {
+    // Use order_items instead of items
+    let orderItems = order.order_items;
+    
+    // Parse if it's a string
+    if (typeof orderItems === 'string') {
+      try {
+        orderItems = JSON.parse(orderItems);
+      } catch (e) {
+        toast.error('Invalid order data');
+        return;
+      }
+    }
+    
+    if (!Array.isArray(orderItems) || itemIndex >= orderItems.length) {
+      toast.error('Invalid item index');
+      return;
+    }
+    
+    const itemToDelete = orderItems[itemIndex];
+    if (!window.confirm(`Remove ${itemToDelete.name} from the order?`)) {
       return;
     }
     
     try {
       // Create a new array without the deleted item
-      const updatedItems = order.items.filter((_, index) => index !== itemIndex);
+      const updatedItems = orderItems.filter((_, index) => index !== itemIndex);
       
       if (updatedItems.length === 0) {
         // If no items left, delete the entire order
@@ -121,7 +140,7 @@ const TableSessionPopup = ({ isOpen, onClose, table, onSessionStart, onSessionEn
       const orderData = {
         session_id: session.id,
         table_number: table.table_number,
-        items: [{
+        order_items: [{
           menu_item_id: menuItem.id,
           name: menuItem.name,
           price: menuItem.price,
@@ -131,10 +150,12 @@ const TableSessionPopup = ({ isOpen, onClose, table, onSessionStart, onSessionEn
         status: 'pending'
       };
       
+      console.log('Creating order with data:', orderData);
       await createOrder(orderData);
       toast.success(`${menuItem.name} added to order`);
       fetchSessionDetails(); // Refresh orders
     } catch (error) {
+      console.error('Error adding item:', error);
       toast.error('Failed to add item');
     }
   };
@@ -149,7 +170,7 @@ const TableSessionPopup = ({ isOpen, onClose, table, onSessionStart, onSessionEn
       // Create transaction record
       const orderDetails = orders.map(order => ({
         id: order.id,
-        items: order.items,
+        items: order.order_items, // Use order_items instead of items
         total_amount: order.total_amount,
         created_at: order.created_at
       }));
@@ -170,6 +191,7 @@ const TableSessionPopup = ({ isOpen, onClose, table, onSessionStart, onSessionEn
       onClose();
     } catch (error) {
       toast.error('Failed to complete checkout');
+      console.error('Checkout error:', error);
     } finally {
       setLoading(false);
     }
@@ -256,28 +278,44 @@ const TableSessionPopup = ({ isOpen, onClose, table, onSessionStart, onSessionEn
                         
                         {/* Items within this order */}
                         <div className="ml-4 space-y-1">
-                          {order.items && Array.isArray(order.items) ? (
-                            order.items.map((item, itemIndex) => (
-                              <div key={itemIndex} className="flex justify-between items-center py-1">
-                                <div className="flex-1">
-                                  <span className="text-sm">
-                                    {item.quantity}x {item.name}
-                                  </span>
-                                  <span className="text-sm text-gray-500 ml-2">
-                                    ${(item.price * item.quantity).toFixed(2)}
-                                  </span>
+                          {order.order_items && (() => {
+                            try {
+                              let items;
+                              
+                              // Handle both string and object formats
+                              if (typeof order.order_items === 'string') {
+                                items = JSON.parse(order.order_items);
+                              } else if (Array.isArray(order.order_items)) {
+                                // Already an array, use as is
+                                items = order.order_items;
+                              } else {
+                                console.error('Invalid order_items format:', order.order_items);
+                                return <p className="text-gray-500">No items to display</p>;
+                              }
+                              
+                              return items.map((item, itemIndex) => (
+                                <div key={itemIndex} className="flex justify-between items-center py-1">
+                                  <div className="flex-1">
+                                    <span className="text-sm">
+                                      {item.quantity}x {item.name}
+                                    </span>
+                                    <span className="text-sm text-gray-500 ml-2">
+                                      ${(item.price * item.quantity).toFixed(2)}
+                                    </span>
+                                  </div>
+                                  <button
+                                    onClick={() => handleDeleteItem(order.id, itemIndex)}
+                                    className="ml-4 text-red-600 hover:text-red-800 text-sm"
+                                  >
+                                    Remove
+                                  </button>
                                 </div>
-                                <button
-                                  onClick={() => handleDeleteItem(order.id, itemIndex)}
-                                  className="ml-4 text-red-600 hover:text-red-800 text-sm"
-                                >
-                                  Remove
-                                </button>
-                              </div>
-                            ))
-                          ) : (
-                            <p className="text-sm text-gray-500">No item details available</p>
-                          )}
+                              ));
+                            } catch (e) {
+                              console.error('Error parsing order items:', e, 'order_items:', order.order_items);
+                              return <p className="text-red-500">Error displaying order items</p>;
+                            }
+                          })()}
                         </div>
                       </div>
                     ))}

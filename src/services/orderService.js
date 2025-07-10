@@ -44,20 +44,41 @@ export const getOrderById = async (orderId) => {
   return data;
 };
 
+export const getActiveOrders = async () => {
+  try {
+    const { data, error } = await supabase
+      .from('orders_rest')
+      .select('*')
+      .in('status', ['pending', 'preparing'])
+      .order('created_at', { ascending: false });
+      
+    if (error) throw error;
+    return data || [];
+  } catch (error) {
+    console.error('Error fetching active orders:', error);
+    throw error;
+  }
+};
+
+// Make sure your updateOrderStatus function only allows 'preparing' or 'completed'
 export const updateOrderStatus = async (orderId, status) => {
-  const { data, error } = await supabase
-    .from('orders_rest')
-    .update({ status })
-    .eq('id', orderId)
-    .select()
-    .single();
+  // Validate status
+  if (!['preparing', 'completed'].includes(status)) {
+    throw new Error('Invalid status. Must be "preparing" or "completed"');
+  }
   
-  if (error) {
+  try {
+    const { error } = await supabase
+      .from('orders_rest')
+      .update({ status, updated_at: new Date() })
+      .eq('id', orderId);
+      
+    if (error) throw error;
+    return true;
+  } catch (error) {
     console.error('Error updating order status:', error);
     throw error;
   }
-  
-  return data;
 };
 
 export const getOrdersByTableAndSession = async (tableNumber, sessionId) => {
@@ -77,19 +98,27 @@ export const getOrdersByTableAndSession = async (tableNumber, sessionId) => {
 };
 
 export const createOrder = async (orderData) => {
-  const { data, error } = await supabase
-    .from('orders_rest')
-    .insert([orderData])
-    .select()
-    .single();
-  
-  if (error) {
-    console.error('Error creating order:', error);
-    throw error;
-  }
-  
-  return data;
-};
+    // Ensure order_items is a JSON string
+    const processedOrderData = {
+      ...orderData,
+      order_items: typeof orderData.order_items === 'string' 
+        ? orderData.order_items 
+        : JSON.stringify(orderData.order_items)
+    };
+    
+    const { data, error } = await supabase
+      .from('orders_rest')
+      .insert([processedOrderData])
+      .select()
+      .single();
+    
+    if (error) {
+      console.error('Error creating order:', error);
+      throw error;
+    }
+    
+    return data;
+  };
 
 export const getSessionTotal = async (sessionId) => {
   const { data, error } = await supabase
@@ -123,23 +152,23 @@ export const deleteOrderItem = async (orderId) => {
 
 // Add these functions to your existing orderService.js
 export const updateOrderItems = async (orderId, updatedItems, newTotalAmount) => {
-  const { data, error } = await supabase
-    .from('orders_rest')
-    .update({ 
-      order_items: updatedItems,
-      total_amount: newTotalAmount 
-    })
-    .eq('id', orderId)
-    .select()
-    .single();
-  
-  if (error) {
-    console.error('Error updating order items:', error);
-    throw error;
-  }
-  
-  return data;
-};
+    const { data, error } = await supabase
+      .from('orders_rest')
+      .update({ 
+        order_items: JSON.stringify(updatedItems), // Convert to JSON string
+        total_amount: newTotalAmount 
+      })
+      .eq('id', orderId)
+      .select()
+      .single();
+    
+    if (error) {
+      console.error('Error updating order items:', error);
+      throw error;
+    }
+    
+    return data;
+  };
 
 export const deleteOrderIfEmpty = async (orderId) => {
   const { error } = await supabase

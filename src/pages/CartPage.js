@@ -260,7 +260,19 @@ const CartPage = () => {
                       <div className="divide-y divide-gray-200">
                         {order.order_items && (() => {
                           try {
-                            const items = JSON.parse(order.order_items);
+                            let items;
+                            
+                            // Handle both string and object formats
+                            if (typeof order.order_items === 'string') {
+                              items = JSON.parse(order.order_items);
+                            } else if (Array.isArray(order.order_items)) {
+                              // Already an array, use as is
+                              items = order.order_items;
+                            } else {
+                              console.error('Invalid order_items format:', order.order_items);
+                              return <p className="text-gray-500">No items to display</p>;
+                            }
+                            
                             return items.map((item, index) => (
                               <div key={index} className="py-2">
                                 <div className="flex justify-between">
@@ -273,7 +285,7 @@ const CartPage = () => {
                               </div>
                             ));
                           } catch (e) {
-                            console.error('Error parsing order items:', e);
+                            console.error('Error parsing order items:', e, 'order_items:', order.order_items);
                             return <p className="text-red-500">Error displaying order items</p>;
                           }
                         })()}

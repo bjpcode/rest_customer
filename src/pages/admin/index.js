@@ -113,7 +113,7 @@ const AdminDashboard = () => {
       </div>
       
       {/* Quick Links */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-8">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mt-8">
         <Link to="/admin/orders" className="bg-blue-600 text-white rounded-lg p-6 text-center hover:bg-blue-700">
           <h3 className="text-xl font-semibold mb-2">Manage Orders</h3>
           <p>View and update order status</p>
@@ -127,6 +127,11 @@ const AdminDashboard = () => {
         <Link to="/admin/menu" className="bg-purple-600 text-white rounded-lg p-6 text-center hover:bg-purple-700">
           <h3 className="text-xl font-semibold mb-2">Manage Menu</h3>
           <p>Add, edit, or remove menu items</p>
+        </Link>
+        
+        <Link to="/admin/kitchen" className="bg-orange-600 text-white rounded-lg p-6 text-center hover:bg-orange-700">
+          <h3 className="text-xl font-semibold mb-2">Kitchen Dashboard</h3>
+          <p>Manage and track food preparation</p>
         </Link>
       </div>
     </div>

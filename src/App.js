@@ -12,6 +12,7 @@ import AdminRegister from './pages/admin/register';
 import AdminProfile from './pages/admin/profile';
 import TablesManagement from './pages/admin/tables';
 import OrdersManagement from './pages/admin/orders';
+import KitchenPage from './pages/admin/kitchen';
 import ProtectedRoute from './components/ProtectedRoute';
 
 function App() {
@@ -48,6 +49,11 @@ function App() {
             <Route path="/admin/orders" element={
               <ProtectedRoute requireAdmin={true}>
                 <OrdersManagement />
+              </ProtectedRoute>
+            } />
+            <Route path="/admin/kitchen" element={
+              <ProtectedRoute requireAdmin={true}>
+                <KitchenPage />
               </ProtectedRoute>
             } />
           </Routes>
